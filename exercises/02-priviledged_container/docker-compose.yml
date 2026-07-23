@@ -1,0 +1,26 @@
+# Exercise 02 — Privileged Container Escape
+# Target definition. The single variable under study is `privileged: true`;
+# everything else is deliberately minimal so the misconfiguration is isolated.
+#
+# Compose v2 schema (no top-level `version:` key required).
+
+services:
+  privileged-target:
+    # Pinned for reproducibility. The escape itself is version-independent
+    # (it is a configuration flaw, not a software defect), but the image is
+    # pinned so the environment rebuilds identically. See README, "Reproducibility".
+    image: ubuntu:22.04
+    container_name: ex02-privileged-target
+
+    # --- The misconfiguration under study -------------------------------------
+    # Grants ALL capabilities, disables the default seccomp profile, runs the
+    # LSM profile unconfined, and exposes the host's block devices in /dev.
+    privileged: true
+    # --------------------------------------------------------------------------
+
+    # Keep the container alive so it can be entered with `docker exec`.
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+
+    # Cosmetic: a recognisable hostname inside the container.
+    hostname: privileged-target
