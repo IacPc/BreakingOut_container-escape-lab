@@ -28,39 +28,34 @@ Vagrant.configure("2") do |config|
   # VM 1 — runtime target  (exercises 01, 02, 03)
   # =========================================================================
   config.vm.define "runtime", autostart: false do |rt|
-    rt.vm.box      = "ubuntu/bionic64"      # Ubuntu 18.04 LTS
+    rt.vm.box      = "generic/ubuntu1804"      # Ubuntu 18.04 LTS
     rt.vm.hostname = "runtime-target"
 
-    rt.vm.network "private_network", type: "dhcp"   # host-only, isolated
+    rt.vm.network "private_network", ip: "192.168.122.3"   # host-only, isolated
 
-    rt.vm.provider "virtualbox" do |vb|
-      vb.name   = "cel-runtime-target"
-      vb.memory = 2048
-      vb.cpus   = 2
+    rt.vm.provider "libvirt" do |lv|
+      lv.uri    = "qemu:///system"
+      lv.memory = 2048
+      lv.cpus   = 2
     end
 
     # Provision the pinned-vulnerable Docker/runc stack + compose plugin.
     rt.vm.provision "shell", path: "provision-runtime.sh"
 
-    # Ship the per-exercise selector and the exercises into the VM.
-    rt.vm.provision "file", source: "select-exercise.sh", destination: "/home/vagrant/select-exercise.sh"
-    rt.vm.provision "file", source: "exercises",          destination: "/home/vagrant/exercises"
-    rt.vm.provision "shell", inline: "chmod +x /home/vagrant/select-exercise.sh /home/vagrant/exercises/*/*.sh || true"
   end
 
   # =========================================================================
   # VM 2 — kernel target  (exercises 04, 05)
   # =========================================================================
   config.vm.define "kernel", autostart: false do |kt|
-    kt.vm.box      = "ubuntu/focal64"       # Ubuntu 20.04 LTS
+    kt.vm.box      = "generic/ubuntu2004"       # Ubuntu 20.04 LTS
     kt.vm.hostname = "kernel-target"
 
-    kt.vm.network "private_network", type: "dhcp"   # host-only, isolated
+    kt.vm.network "private_network", ip: "192.168.122.20"
 
-    kt.vm.provider "virtualbox" do |vb|
-      vb.name   = "cel-kernel-target"
-      vb.memory = 2048
-      vb.cpus   = 2
+    kt.vm.provider "libvirt" do |lv|
+      lv.memory = 2048
+      lv.cpus   = 2
     end
 
     # Provision the pinned vulnerable kernel + cgroup v1 + unprivileged userns.
@@ -68,11 +63,7 @@ Vagrant.configure("2") do |config|
     # required. The provisioner requests it; if your Vagrant does not reboot
     # automatically, run:  vagrant reload kernel
     kt.vm.provision "shell", path: "provision-kernel.sh", reboot: true
-
-    kt.vm.provision "file", source: "select-exercise.sh", destination: "/home/vagrant/select-exercise.sh"
-    kt.vm.provision "file", source: "exercises",          destination: "/home/vagrant/exercises"
-    kt.vm.provision "shell", inline: "chmod +x /home/vagrant/select-exercise.sh /home/vagrant/exercises/*/*.sh || true"
-  end
+ end
 
   config.vm.synced_folder ".", "/vagrant",
     type: "rsync",

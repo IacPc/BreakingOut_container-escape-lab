@@ -15,8 +15,9 @@ export DEBIAN_FRONTEND=noninteractive
 #     apt-cache madison docker-ce docker-ce-cli containerd.io
 DOCKER_VERSION="5:18.09.1~3-0~ubuntu-bionic"
 DOCKER_CLI_VERSION="5:18.09.1~3-0~ubuntu-bionic"
-CONTAINERD_VERSION="1.2.2-3"          # compatible with Docker 18.09.1
-COMPOSE_PLUGIN_VERSION="v2.24.6"      # standalone v2 plugin binary
+CONTAINERD_VERSION="1.2.2-3"         # compatible with Docker 18.09.1
+COMPOSE_PLUGIN_VERSION="1.24.1"      # standalone v2 plugin binary
+RUNC_VERSION="v1.0.0-rc5"            # vulnerable runc version
 
 echo "[*] Installing prerequisites"
 apt-get update -y
@@ -35,22 +36,29 @@ apt-get install -y --allow-downgrades \
   "docker-ce-cli=${DOCKER_CLI_VERSION}" \
   "containerd.io=${CONTAINERD_VERSION}"
 
-# Prevent unattended upgrades from silently patching the vulnerable runtime.
-apt-mark hold docker-ce docker-ce-cli containerd.io
-systemctl disable --now unattended-upgrades 2>/dev/null || true
-
 echo "[*] Installing Docker Compose v2 plugin (${COMPOSE_PLUGIN_VERSION})"
 # The exercise compose files use the v2 (version-less) schema. The v2 plugin
 # talks to the 18.09 daemon happily.
-install -d /usr/local/lib/docker/cli-plugins
-curl -fsSL \
+
+sudo curl -fsSL \
   "https://github.com/docker/compose/releases/download/${COMPOSE_PLUGIN_VERSION}/docker-compose-linux-x86_64" \
-  -o /usr/local/lib/docker/cli-plugins/docker-compose
-chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+  -o /usr/local/bin/docker-compose
+sudo mv /usr/local/bin/docker-compose /usr/bin/docker-compose
+sudo chmod +x /usr/bin/docker-compose     
+
+sudo curl -fsSL \
+  https://github.com/opencontainers/runc/releases/download/${RUNC_VERSION}/runc.amd64 \
+  -o /tmp/runc
+sudo cp /tmp/runc "$(which runc)"
+
+# Prevent unattended upgrades from silently patching the vulnerable runtime.
+sudo apt-mark hold docker-ce docker-ce-cli containerd.io
+sudo systemctl disable --now unattended-upgrades 2>/dev/null || true
+
 
 echo "[*] Enabling Docker and adding the vagrant user to the docker group"
-systemctl enable --now docker
-usermod -aG docker vagrant || true
+sudo systemctl enable --now docker
+sudo usermod -aG docker vagrant || true
 
 echo "[*] Pre-pulling base images for air-gapped operation"
 docker pull ubuntu:18.04 || true
