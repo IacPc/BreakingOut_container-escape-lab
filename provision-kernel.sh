@@ -71,7 +71,7 @@ apt-get update -y
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 systemctl enable --now docker
 usermod -aG docker vagrant || true
-docker pull ubuntu:20.04 || true
+docker pull ubuntu:22.04 || true
 
 echo "kernel" > /etc/cel-target-role
 

@@ -54,6 +54,7 @@ Vagrant.configure("2") do |config|
     kt.vm.network "private_network", ip: "192.168.122.20"
 
     kt.vm.provider "libvirt" do |lv|
+      lv.uri    = "qemu:///system"
       lv.memory = 2048
       lv.cpus   = 2
     end
