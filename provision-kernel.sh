@@ -21,6 +21,37 @@ export DEBIAN_FRONTEND=noninteractive
 # Confirm availability with:  apt-cache search linux-image-5.4.0-.*-generic
 VULN_KERNEL_ABI="5.4.0-90"
 VULN_KERNEL="linux-image-${VULN_KERNEL_ABI}-generic"
+TARGET_KERNEL="${VULN_KERNEL_ABI}-generic"
+RUNNING_KERNEL="$(uname -r)"          # never remove what's booted
+
+# --- 1. remove malformed duplicate initrds (e.g. *.img.img cruft) -----------
+# These aren't dpkg-tracked and aren't referenced by grub.
+# i pulled the image and they were there( don't know why), they eat a lot of storage
+# so i delete them
+find /boot -maxdepth 1 -name 'initrd.img-*.img' -print -delete 2>/dev/null || true
+
+
+# --- 2. purge every installed kernel image except the two protected ones ----
+purge_list=""
+while read -r pkg; do
+    # extract the version-flavour, e.g. linux-image-5.4.0-42-generic -> 5.4.0-42-generic
+    ver="${pkg#linux-image-}"
+    ver="${ver#unsigned-}"
+    [ "$ver" = "$RUNNING_KERNEL" ] && continue
+    [ "$ver" = "$TARGET_KERNEL" ]  && continue
+    purge_list="$purge_list $pkg"
+done < <(dpkg --list | awk '/^ii +linux-image-[0-9]/ {print $2}')
+
+if [ -n "$purge_list" ]; then
+    echo "Purging:$purge_list"
+    sudo apt-get -y purge $purge_list
+    sudo apt-get -y autoremove --purge
+else
+    echo "No removable kernels found."
+fi
+
+# --- 3. rebuild grub so menu entries match what's left ----------------------
+sudo update-grub
 
 echo "[*] Installing pinned vulnerable kernel: ${VULN_KERNEL}"
 apt-get update -y
